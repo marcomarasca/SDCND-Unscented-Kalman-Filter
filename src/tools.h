@@ -24,6 +24,11 @@ public:
   */
   VectorXd CalculateRMSE(const vector<VectorXd> &estimations, const vector<VectorXd> &ground_truth);
 
+  /**
+   * Helper method to normalize an angle between PI and -PI.
+   */
+  float NormalizeAngle(float angle);
+
 };
 
 #endif /* TOOLS_H_ */
