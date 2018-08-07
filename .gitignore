@@ -3,3 +3,9 @@
 
 # build files
 build/
+
+# editor config
+.vscode/
+
+# Jupyter stuff
+.ipynb_checkpoints

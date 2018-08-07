@@ -7,6 +7,9 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <functional>
+
+using namespace std;
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
@@ -28,9 +31,6 @@ public:
 
   // state covariance matrix
   MatrixXd P_;
-
-  // predicted sigma points matrix
-  MatrixXd Xsig_pred_;
 
   // time when the state is true, in us
   long long time_us_;
@@ -56,21 +56,6 @@ public:
   // Radar measurement noise standard deviation radius change in m/s
   double std_radrd_ ;
 
-  // Radar measurements dimension: rho, phi, rho_dot
-  int n_z_radar_ = 3;
-
-  // Laser measurements dimentsion: px, py
-  int n_z_laser_ = 2;
-
-  // measurement covariance matrix - radar
-  MatrixXd R_radar_;
-
-  // measurement covariance matrix - laser
-  MatrixXd R_laser_;
-
-  // Weights of sigma points
-  VectorXd weights_;
-
   // State dimension
   int n_x_;
 
@@ -80,14 +65,11 @@ public:
   // Sigma point spreading parameter
   double lambda_;
 
-  // NIS for radar
+  // Latest NIS (Normalized Innovation Squared) computed for the radar
   double NIS_radar_;
 
-  // NIS for laser
+  // Latest NIS (Normalized Innovation Squared) computed for the laser
   double NIS_laser_;
-
-  // Tool object used to work on polar coordinates
-  Tools tools_;
 
   /**
    * Constructor
@@ -126,17 +108,71 @@ public:
 
 private:
 
+  // Radar measurements dimension: rho, phi, rho_dot
+  int _n_z_radar = 3;
+
+  // Laser measurements dimentsion: px, py
+  int _n_z_laser = 2;
+
+  // predicted sigma points matrix
+  MatrixXd _Xsig_pred;
+
+  // measurement covariance matrix - radar
+  MatrixXd _R_radar;
+
+  // measurement covariance matrix - laser
+  MatrixXd _R_laser;
+
+  // measurement matrix for laser
+  MatrixXd _H_laser;
+
+  // Identity matrix
+  MatrixXd _I;
+
+  // Weights of sigma points
+  VectorXd _weights;
+
+  // Tool object used to work on polar coordinates
+  Tools _tools;
+
   /**
    * Initilizes the kalman filter using the given measurement package, if the data comes from a radar
    * sensor converts the state coordinates from polar to cartesian
-   */ 
+   * 
+   * @param meas_package The measurement at k+1
+   */
   void _InitializeFilter(const MeasurementPackage &measurement_pack);
 
+  /**
+   * Generates sigma points for the UKF
+   * 
+   * @return The matrix with the generated (augmented) sigma points
+   */
   MatrixXd _GenerateSigmaPoints();
 
+  /**
+   * Updates the sigma points prediction for the generated sigma points, given the time span
+   * 
+   * @param Xsig_aug The matrix of generated sigma points
+   */
   void _UpdateSigmaPointsPrediction(const MatrixXd &Xsig_aug, double delta_t);
 
+  /**
+   * Updates the mean state and covariance given the sigma points prediction
+   */
   void _UpdateMeanAndCovariancePrediction();
+
+  /**
+   * Updates the state and the state covariance matrix given the error, measurement covariance matrix and
+   * the cross correlation matrix, updates the given NIS value
+   * 
+   * @param z_diff Difference between sensor measurement and prediction
+   * @param S Measurement covariance matrix
+   * @param Tc Matrix for cross correlation
+   * @param NIS_out NIS out
+   */ 
+  void _UpdateStateUKF(const VectorXd &z_diff, const MatrixXd &S, const MatrixXd &Tc, double &NIS_out);
+
 };
 
 #endif /* UKF_H */
