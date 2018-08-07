@@ -280,6 +280,8 @@ void UKF::_InitializeFilter(const MeasurementPackage &measurement_pack) {
   // Set initiale covariance for x and y
   P_(0, 0) = xy_cov;
   P_(1, 1) = xy_cov;
+  P_(3, 3) = std_radphi_ * std_radphi_;
+  P_(4, 4) = std_radrd_ * std_radrd_;
   
   // Initializes the radar covariance matrix
   _R_radar(0, 0) = std_radr_ * std_radr_;
@@ -355,10 +357,10 @@ void UKF::_UpdateSigmaPointsPrediction(const MatrixXd &Xsig_aug, double delta_t)
       double nu_a     = Xsig_aug(5, i);
       double nu_yaw_d = Xsig_aug(6, i);
       
-      double px_pred, py_pred;
       double sin_yaw = sin(yaw);
       double cos_yaw = cos(yaw);
 
+      double px_pred, py_pred;
       // Avoid division by zero
       if (fabs(yaw_d) > EPS) {
         double c1 = v / yaw_d;

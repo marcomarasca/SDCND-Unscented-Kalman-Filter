@@ -210,7 +210,6 @@ int main() {
     ws.close();
     std::cout << "Disconnected" << std::endl;
     if (file_out.is_open()) {
-      std::cout<<"Closing.."<<std::endl;
       file_out.close();
     }
   });
