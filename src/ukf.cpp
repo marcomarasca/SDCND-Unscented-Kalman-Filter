@@ -19,11 +19,15 @@ UKF::UKF() {
   // If this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
 
+  // if this is false uses the UKF equations for the update step, otherwise uses
+  // the standard KF equations (more efficient)
+  use_laser_kf = true;
+
   // Process noise standard deviation longitudinal acceleration in m/s^2
   std_a_ = 1;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 0.3;
+  std_yawdd_ = 0.6;
   
   //DO NOT MODIFY measurement noise values below these are provided by the sensor manufacturer.
   // Laser measurement noise standard deviation position1 in m
@@ -89,6 +93,11 @@ UKF::UKF() {
 
   // Identity Matrix
   _I = MatrixXd::Identity(n_x_, n_x_);
+
+  // Sets the pointer function to the correct call according to the use_laser_kf value
+  _UpdateLidar = use_laser_kf ? &UKF::_UpdateLidarKF : &UKF::_UpdateLidarUKF;
+
+  cout << "Using " << (use_laser_kf ? "KF" : "UKF") << " for laser measurement updates" << endl;
 
 }
 
@@ -234,65 +243,15 @@ void UKF::UpdateRadar(const MeasurementPackage &measurement_pack) {
  * @param {MeasurementPackage} meas_package
  */
 void UKF::UpdateLidar(const MeasurementPackage &measurement_pack) {
-  /*****************************************************************************
-   *  Update Prediction into Measurement space
-   ****************************************************************************/
-
-   // Create matrix for sigma points in measurement space
-  MatrixXd Zsig = MatrixXd::Zero(_n_z_laser, 2 * n_aug_ + 1);
-
-  // Transform sigma points into measurement space
-  Zsig.row(0) = _Xsig_pred.row(0);
-  Zsig.row(1) = _Xsig_pred.row(1);
-  
-  // Mean predicted measurement
-  VectorXd z_pred = VectorXd::Zero(_n_z_laser);
-  
-  // Calculate mean predicted measurement
-  for (int i = 0; i < 2 * n_aug_ + 1; i++) {
-    z_pred += _weights(i) * Zsig.col(i);
-  }
-
-  // Measurement covariance matrix S
-  MatrixXd S = MatrixXd::Zero(_n_z_laser, _n_z_laser);
-
-  // Calculate innovation covariance matrix S
-  for (int i = 0; i < 2 * n_aug_ + 1; i++) {
-    VectorXd z_diff = Zsig.col(i) - z_pred;
-    S += _weights(i) * z_diff * z_diff.transpose();
-  }
-  
-  S += _R_laser;
-
-  /*****************************************************************************
-   *  Update State
-   ****************************************************************************/
-
-  // Create matrix for cross correlation Tc
-  MatrixXd Tc = MatrixXd::Zero(n_x_, _n_z_laser);
-
-  // Calculate cross correlation matrix
-  for (int i = 0; i < 2 * n_aug_ + 1; i++) {
-
-    VectorXd x_diff = _Xsig_pred.col(i) - x_;
-    x_diff(3) = _tools.NormalizeAngle(x_diff(3));
-
-    VectorXd z_diff = Zsig.col(i) - z_pred;
-
-    Tc += _weights(i) * x_diff * z_diff.transpose();
-  }
-
-  VectorXd z = measurement_pack.raw_measurements_;
-  
-  VectorXd z_diff = z - z_pred;
-
-  _UpdateStateUKF(z_diff, S, Tc, NIS_laser_);
+  // Invokes the function pointed by the function pointer, can be _UpdateLidarKF or _UpdateLidarUKF
+  // according to the value of use_laser_kf
+  (this->*_UpdateLidar)(measurement_pack);
 }
 
 void UKF::_InitializeFilter(const MeasurementPackage &measurement_pack) {
   string sensor_name = measurement_pack.sensor_type_ == 0 ? "LASER" : "RADAR";
 
-  cout << "Filter Initialization using " << sensor_name << " sensor:" << endl;
+  cout << "Filter Initialization using " << sensor_name << " sensor" << endl;
   
   float px, py;
   double xy_cov;
@@ -465,3 +424,77 @@ void UKF::_UpdateStateUKF(const VectorXd &z_diff, const MatrixXd &S, const Matri
   // Computes NIS
   NIS_out = z_diff.transpose() * Si * z_diff;
 }
+
+void UKF::_UpdateLidarUKF(const MeasurementPackage &measurement_pack) {
+  /*****************************************************************************
+   *  Update Prediction into Measurement space
+   ****************************************************************************/
+
+   // Create matrix for sigma points in measurement space
+  MatrixXd Zsig = MatrixXd::Zero(_n_z_laser, 2 * n_aug_ + 1);
+
+  // Transform sigma points into measurement space
+  Zsig.row(0) = _Xsig_pred.row(0);
+  Zsig.row(1) = _Xsig_pred.row(1);
+  
+  // Mean predicted measurement
+  VectorXd z_pred = VectorXd::Zero(_n_z_laser);
+  
+  // Calculate mean predicted measurement
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {
+    z_pred += _weights(i) * Zsig.col(i);
+  }
+
+  // Measurement covariance matrix S
+  MatrixXd S = MatrixXd::Zero(_n_z_laser, _n_z_laser);
+
+  // Calculate innovation covariance matrix S
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {
+    VectorXd z_diff = Zsig.col(i) - z_pred;
+    S += _weights(i) * z_diff * z_diff.transpose();
+  }
+  
+  S += _R_laser;
+
+  /*****************************************************************************
+   *  Update State
+   ****************************************************************************/
+
+  // Create matrix for cross correlation Tc
+  MatrixXd Tc = MatrixXd::Zero(n_x_, _n_z_laser);
+
+  // Calculate cross correlation matrix
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {
+
+    VectorXd x_diff = _Xsig_pred.col(i) - x_;
+    x_diff(3) = _tools.NormalizeAngle(x_diff(3));
+
+    VectorXd z_diff = Zsig.col(i) - z_pred;
+
+    Tc += _weights(i) * x_diff * z_diff.transpose();
+  }
+
+  VectorXd z = measurement_pack.raw_measurements_;
+  
+  VectorXd z_diff = z - z_pred;
+
+  _UpdateStateUKF(z_diff, S, Tc, NIS_laser_);
+}
+
+void UKF::_UpdateLidarKF(const MeasurementPackage &measurement_pack) {
+  VectorXd z_pred = _H_laser * x_;
+  VectorXd z_diff = measurement_pack.raw_measurements_ - z_pred;
+
+  MatrixXd Ht = _H_laser.transpose();
+  MatrixXd S = _H_laser * P_ * Ht + _R_laser;
+  MatrixXd Si = S.inverse();
+  MatrixXd K = P_ * Ht * Si;
+
+  // New estimate
+  x_ += K * z_diff;
+
+  P_ = (_I - K * _H_laser) * P_;
+
+  NIS_laser_ = z_diff.transpose() * Si * z_diff;
+}
+

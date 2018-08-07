@@ -26,6 +26,10 @@ public:
   // if this is false, radar measurements will be ignored (except for init)
   bool use_radar_;
 
+  // if this is false uses the UKF equations for the update step, otherwise uses
+  // the standard KF equations (more efficient)
+  bool use_laser_kf;
+
   // state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
   VectorXd x_;
 
@@ -172,6 +176,26 @@ private:
    * @param NIS_out NIS out
    */ 
   void _UpdateStateUKF(const VectorXd &z_diff, const MatrixXd &S, const MatrixXd &Tc, double &NIS_out);
+
+  /**
+   * Function pointer for the lidar update that is set to either _UpdateLidarKF or _UpdateLidarUKF according
+   * to the use_laser_kf value.
+   */
+  void (UKF::*_UpdateLidar)(const MeasurementPackage &measurement_pack);
+
+  /**
+   * Updates the mean state and covariance matrix using UKF (sigma points) 
+   * 
+   * @param measurement_package The measurement at k+1
+   */
+  void _UpdateLidarUKF(const MeasurementPackage &measurement_pack);
+
+  /**
+   * Updates the mean state and covariance matrix using standard KF
+   * 
+   * @param measurement_package The measurement at k+1
+   */
+  void _UpdateLidarKF(const MeasurementPackage &measurement_pack);
 
 };
 
