@@ -46,7 +46,7 @@ The program process this data and sends back a JSON object containing the estima
 ["rmse_vy"]
 ```
 
-As we can see the coordinates coming from the 2 sensors are different in the type of representation, while the lidar outputs cartesian coordinates, the radar provides polar coordinates. This is where the unscented (and extended) kalman filter comes into place where the non-linear data is used (for the radar) and needs to deal with this non-linear process and measurement models. While the [extended version](https://github.com/marcomarasca/CarND-Extended-Kalman-Filter) uses a linear approximation for the computation though a multivariate Taylor Series expansions to linearize a model, the unscented version of the kalman filter takes a different approach without trying to linearize the model, but rather generating a set of (*sigma*) points that approximate the distribution and that are then converted to the measurement space for prediction. 
+As we can see the coordinates coming from the 2 sensors are different in the type of representation, while the lidar outputs cartesian coordinates, the radar provides polar coordinates. This is where the unscented (and extended) kalman filter comes into place where the non-linear data is used (for the radar) and needs to deal with this non-linear process and measurement models. While the [extended version](https://github.com/marcomarasca/SDCND-Extended-Kalman-Filter) uses a linear approximation for the computation though a multivariate Taylor Series expansions to linearize a model, the unscented version of the kalman filter takes a different approach without trying to linearize the model, but rather generating a set of (*sigma*) points that approximate the distribution and that are then converted to the measurement space for prediction. 
 
 The model used in this implementation is the *Constant Turn Rate and Velocity* magnitude model (CTRV) that, as the name implies assumes a constant rate of turn and velocity. The unscented kalman filter is not only more precise than the extended version, but it's also computationally less expensive than the extended counterpart.
 
@@ -61,7 +61,7 @@ The [results](./extra/results.txt) of the estimations can be compared with the g
 | **Radar Only**    | 0.1452 | 0.2288 | 0.1877 | 0.2117 |
 | **Lidar Only**    | 0.0902 | 0.0954 | 0.2085 | 0.2002 |
 
-As expected the results using both sensors together are sensibly better than using a single sensor at the time. Moreover we can compare the results against the [extended version](https://github.com/marcomarasca/CarND-Extended-Kalman-Filter) of the filter:
+As expected the results using both sensors together are sensibly better than using a single sensor at the time. Moreover we can compare the results against the [extended version](https://github.com/marcomarasca/SDCND-Extended-Kalman-Filter) of the filter:
 
 |         | Px     | Py     | Vx     | Vy     |
 |---------|--------|--------|--------|--------|
@@ -163,7 +163,7 @@ Under windows (WSL) and linux you can make a clean installation as follows:
 3. ```sudo apt-get install cmake```
 4. ```sudo apt-get install openssl```
 5. ```sudo apt-get install libssl-dev```
-6. ```git clone https://github.com/marcomarasca/CarND-Unscented-Kalman-Filter```
+6. ```git clone https://github.com/marcomarasca/SDCND-Unscented-Kalman-Filter```
 7. ```sudo rm /usr/lib/libuWS.so```
 8. ```./install-ubuntu.sh```
 
